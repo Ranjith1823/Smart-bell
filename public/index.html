@@ -45,6 +45,8 @@
 </div>
 
 <script>
+    const API_URL = "https://smart-bell.onrender.com";  // ✅ Render Flask API
+
     function formatDate(isoDate) {
         let date = new Date(isoDate);
         let day = String(date.getDate()).padStart(2, '0');
@@ -54,16 +56,12 @@
     }
 
     function sortDates(dates) {
-        return dates.sort((a, b) => {
-            let dateA = new Date(a);
-            let dateB = new Date(b);
-            return dateA - dateB;
-        });
+        return dates.sort((a, b) => new Date(a) - new Date(b));
     }
 
     function fetchHolidays() {
         $.ajax({
-            url: "/get_holidays",
+            url: `${API_URL}/get_holidays`,
             type: "GET",
             success: function(response) {
                 let list = $("#holiday_list");
@@ -97,15 +95,15 @@
         }
 
         $.ajax({
-            url: "/add_holiday",
+            url: `${API_URL}/add_holiday`,
             type: "POST",
             contentType: "application/json",
             data: JSON.stringify({ date: date, description: description }),
             success: function(response) {
                 alert(response.message);
-                $("#holiday_date").val("");  // Reset date picker
-                $("#holiday_description").val("");  // Clear description field
-                fetchHolidays();  // Refresh the holiday list
+                $("#holiday_date").val("");  
+                $("#holiday_description").val("");  
+                fetchHolidays();  
             },
             error: function(response) {
                 alert(response.responseJSON.message);
@@ -119,7 +117,7 @@
         }
 
         $.ajax({
-            url: "/remove_holiday",
+            url: `${API_URL}/remove_holiday`,
             type: "POST",
             contentType: "application/json",
             data: JSON.stringify({ date: date }),
@@ -133,12 +131,11 @@
         });
     }
 
-    // ✅ Bind the Enter key to addHoliday function
     $(document).ready(function() {
         fetchHolidays();
 
         $("#holiday_date, #holiday_description").keypress(function(event) {
-            if (event.which === 13) {  // Enter key code
+            if (event.which === 13) {  
                 addHoliday();
             }
         });
