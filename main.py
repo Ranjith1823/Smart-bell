@@ -2,16 +2,23 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, db
+import os
+import json
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Firebase Initialization
-cred = credentials.Certificate("D:/git/Smart-bell/firebase_credentials.json")
-firebase_admin.initialize_app(cred, {
-    'databaseURL': "https://smart-bell-7b0c3-default-rtdb.asia-southeast1.firebasedatabase.app/"
-})
+# Load Firebase credentials from environment variable
+firebase_credentials = os.getenv("FIREBASE_CREDENTIALS")
+if firebase_credentials:
+    cred_dict = json.loads(firebase_credentials)
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': "https://smart-bell-7b0c3-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    })
+else:
+    raise ValueError("FIREBASE_CREDENTIALS environment variable not set")
 
 # Function to get holidays
 def get_holidays():
@@ -48,10 +55,8 @@ def add_holiday_route():
     data = request.json
     date = data.get("date")
     description = data.get("description")
-
     if not date or not description:
         return jsonify({"status": "error", "message": "Date and description required"}), 400
-
     add_holiday(date, description)
     return jsonify({"status": "success", "message": "Holiday added"})
 
@@ -60,7 +65,6 @@ def add_holiday_route():
 def remove_holiday_route():
     data = request.json
     date = data.get("date")
-
     if remove_holiday(date):
         return jsonify({"status": "success", "message": "Holiday removed"})
     return jsonify({"status": "error", "message": "Holiday not found"}), 404
