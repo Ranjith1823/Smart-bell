@@ -1,6 +1,6 @@
-
 import json
 import os
+import io
 import requests
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
@@ -18,8 +18,14 @@ firebase_credentials_json = os.getenv("FIREBASE_CREDENTIALS")
 if not firebase_credentials_json:
     raise ValueError("Firebase credentials not found in environment variables!")
 
+# Correctly load Firebase credentials
 cred = credentials.Certificate(json.loads(firebase_credentials_json))
 firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
+
+# Load Firebase Web API Key from environment variables
+FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
+if not FIREBASE_WEB_API_KEY:
+    raise ValueError("Firebase Web API Key is missing in environment variables!")
 
 
 # Serve Frontend (Ensure index.html is in the templates folder)
@@ -37,10 +43,6 @@ def login():
 
     if not email or not password:
         return jsonify({"status": "error", "message": "Email and password are required"}), 400
-
-    FIREBASE_WEB_API_KEY = os.getenv("AIzaSyBbWwuGdRwtDrwXHvHDb6SEv0Mb3TI2uSM")
-    if not FIREBASE_WEB_API_KEY:
-        return jsonify({"status": "error", "message": "Firebase Web API Key is missing"}), 500
 
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_WEB_API_KEY}"
     payload = {
