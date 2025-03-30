@@ -1,149 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holiday Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body {
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 600px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .holiday-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bell System - Login & Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      width: 40%;
+      min-width: 300px;
+    }
+    input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      width: 80%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .hidden {
+      display: none;
+    }
+    /* Additional styling for red remove button */
+    .remove-button {
+      background-color: red;
+    }
+    .remove-button:hover {
+      background-color: darkred;
+    }
+  </style>
 </head>
 <body>
+  <!-- Login Section -->
+  <div id="loginSection" class="container">
+    <h2>Admin Login</h2>
+    <form onsubmit="login(event)">
+      <label>Email:</label><br>
+      <input type="email" id="email" required /><br>
+      <label>Password:</label><br>
+      <input type="password" id="password" required /><br>
+      <button type="submit">Login</button>
+    </form>
+  </div>
 
-<div class="container">
-    <h2 class="text-center">Holiday Manager</h2>
+  <!-- Dashboard Section -->
+  <div id="dashboardSection" class="container hidden">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()">Logout</button>
+    <h3>Add Holiday</h3>
+    <input type="date" id="holidayDate" />
+    <input type="text" id="holidayDesc" placeholder="Description" />
+    <button onclick="addHoliday()">Add Holiday</button>
+    <h3>Holidays List:</h3>
+    <div id="holidayList"></div>
+  </div>
 
-    <!-- Add Holiday Section -->
-    <div class="mb-3">
-        <label class="form-label">Date:</label>
-        <input type="date" id="holiday_date" class="form-control">
-        <label class="form-label">Description:</label>
-        <input type="text" id="holiday_description" class="form-control">
-        <button class="btn btn-primary mt-2 w-100" onclick="addHoliday()">Add Holiday</button>
-    </div>
+  <script>
+    const BACKEND_URL = window.location.origin;
 
-    <!-- Holiday List -->
-    <h3 class="mt-3">Holidays</h3>
-    <ul id="holiday_list" class="list-group holiday-list"></ul>
-</div>
+    function login(event) {
+      event.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-<script>
-    function formatDate(isoDate) {
-        let date = new Date(isoDate);
-        let day = String(date.getDate()).padStart(2, '0');
-        let month = String(date.getMonth() + 1).padStart(2, '0');
-        let year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+      fetch(`${BACKEND_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          alert("Login successful!");
+          document.getElementById("loginSection").classList.add("hidden");
+          document.getElementById("dashboardSection").classList.remove("hidden");
+          loadHolidays();
+        } else {
+          alert(data.message || "Invalid email or password.");
+        }
+      })
+      .catch(error => console.error("Login Error:", error));
     }
 
-    function sortDates(dates) {
-        return dates.sort((a, b) => {
-            let dateA = new Date(a);
-            let dateB = new Date(b);
-            return dateA - dateB;
-        });
-    }
-
-    function fetchHolidays() {
-        $.ajax({
-            url: "/get_holidays",
-            type: "GET",
-            success: function(response) {
-                let list = $("#holiday_list");
-                list.empty();
-
-                let sortedDates = sortDates(Object.keys(response));
-
-                sortedDates.forEach(date => {
-                    let formattedDate = formatDate(date);
-                    list.append(`
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><strong>${formattedDate}</strong>: ${response[date].description}</span>
-                            <button class="btn btn-danger btn-sm" onclick="removeHoliday('${date}')">Remove</button>
-                        </li>
-                    `);
-                });
-            },
-            error: function() {
-                alert("Error fetching holidays.");
-            }
-        });
+    function loadHolidays() {
+      fetch(`${BACKEND_URL}/get_holidays`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("DEBUG: Received holidays data:", data);
+        const holidayList = document.getElementById("holidayList");
+        holidayList.innerHTML = "";
+        if (Object.keys(data).length === 0) {
+          holidayList.innerHTML = "<p>No holidays found.</p>";
+        } else {
+          for (const date in data) {
+            holidayList.innerHTML += `<p>${date}: ${data[date].description} 
+              <button class="remove-button" onclick="removeHoliday('${date}')">Remove</button></p>`;
+          }
+        }
+      })
+      .catch(error => console.error("Error fetching holidays:", error));
     }
 
     function addHoliday() {
-        let date = $("#holiday_date").val();
-        let description = $("#holiday_description").val();
+      const date = document.getElementById("holidayDate").value;
+      const desc = document.getElementById("holidayDesc").value.trim();
 
-        if (!date || !description) {
-            alert("Both fields are required!");
-            return;
-        }
+      if (!date || !desc) {
+        alert("Please enter both a date and description.");
+        return;
+      }
 
-        $.ajax({
-            url: "/add_holiday",
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify({ date: date, description: description }),
-            success: function(response) {
-                alert(response.message);
-                $("#holiday_date").val("");  // Reset date picker
-                $("#holiday_description").val("");  // Clear description field
-                fetchHolidays();  // Refresh the holiday list
-            },
-            error: function(response) {
-                alert(response.responseJSON.message);
-            }
-        });
+      fetch(`${BACKEND_URL}/add_holiday`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, description: desc })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        loadHolidays();
+      })
+      .catch(error => console.error("Error adding holiday:", error));
     }
 
     function removeHoliday(date) {
-        if (!confirm(`Are you sure you want to remove this holiday?`)) {
-            return;
-        }
-
-        $.ajax({
-            url: "/remove_holiday",
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify({ date: date }),
-            success: function(response) {
-                alert(response.message);
-                fetchHolidays();
-            },
-            error: function(response) {
-                alert(response.responseJSON.message);
-            }
-        });
+      fetch(`${BACKEND_URL}/remove_holiday`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        loadHolidays();
+      })
+      .catch(error => console.error("Error removing holiday:", error));
     }
 
-    // ✅ Bind the Enter key to addHoliday function
-    $(document).ready(function() {
-        fetchHolidays();
-
-        $("#holiday_date, #holiday_description").keypress(function(event) {
-            if (event.which === 13) {  // Enter key code
-                addHoliday();
-            }
-        });
-    });
-</script>
-
+    function logout() {
+      alert("Logged out!");
+      document.getElementById("dashboardSection").classList.add("hidden");
+      document.getElementById("loginSection").classList.remove("hidden");
+    }
+  </script>
 </body>
 </html>
