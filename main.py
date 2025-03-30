@@ -74,9 +74,11 @@
 #     app.run(host="0.0.0.0", port=5000, debug=True)
 
 
+import json
+import os
+import requests
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import requests
 import firebase_admin
 from firebase_admin import credentials, db
 
@@ -85,11 +87,14 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 FIREBASE_DB_URL = "https://smart-bell-7b0c3-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
-# Initialize Firebase Admin SDK (adjust the file path as needed)
-cred = credentials.Certificate("D:/git/Bell-system-aiat/firebase_credentials.json")
-firebase_admin.initialize_app(cred, {
-    "databaseURL": FIREBASE_DB_URL
-})
+# Load Firebase credentials from environment variables
+firebase_credentials_json = os.getenv("FIREBASE_CREDENTIALS")
+
+if not firebase_credentials_json:
+    raise ValueError("Firebase credentials not found in environment variables!")
+
+cred = credentials.Certificate(json.loads(firebase_credentials_json))
+firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
 
 
 # Serve Frontend (Ensure index.html is in the templates folder)
@@ -97,7 +102,8 @@ firebase_admin.initialize_app(cred, {
 def home():
     return render_template("index.html")
 
-# Login using Firebase REST API for email/password sign in
+
+# Login using Firebase REST API for email/password sign-in
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -106,6 +112,10 @@ def login():
 
     if not email or not password:
         return jsonify({"status": "error", "message": "Email and password are required"}), 400
+
+    FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
+    if not FIREBASE_WEB_API_KEY:
+        return jsonify({"status": "error", "message": "Firebase Web API Key is missing"}), 500
 
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_WEB_API_KEY}"
     payload = {
@@ -122,13 +132,15 @@ def login():
         error_message = response_data.get("error", {}).get("message", "Login failed")
         return jsonify({"status": "error", "message": error_message}), 401
 
-# Get all holidays from Firebase Realtime Database with debug logging
+
+# Get all holidays from Firebase Realtime Database
 @app.route("/get_holidays", methods=["GET"])
 def get_holidays():
     ref = db.reference("holidays")
     holidays = ref.get() or {}
     print("DEBUG: Holidays from Firebase:", holidays)
     return jsonify(holidays)
+
 
 # Add a holiday (date should be unique)
 @app.route("/add_holiday", methods=["POST"])
@@ -144,6 +156,7 @@ def add_holiday():
     ref.child(date).set({"description": description})
     print("DEBUG: Added holiday:", {date: {"description": description}})
     return jsonify({"status": "success", "message": "Holiday added successfully!"})
+
 
 # Remove a holiday by date
 @app.route("/remove_holiday", methods=["POST"])
@@ -161,6 +174,7 @@ def remove_holiday():
     ref.child(date).delete()
     print("DEBUG: Removed holiday for date:", date)
     return jsonify({"status": "success", "message": "Holiday removed successfully!"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
