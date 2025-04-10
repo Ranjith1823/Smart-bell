@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bell System - Login & Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      width: 40%;
+      min-width: 300px;
+    }
+    input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      width: 80%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .hidden {
+      display: none;
+    }
+    /* Additional styling for red remove button */
+    .remove-button {
+      background-color: red;
+    }
+    .remove-button:hover {
+      background-color: darkred;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Section -->
+  <div id="loginSection" class="container">
+    <h2>Admin Login</h2>
+    <form onsubmit="login(event)">
+      <label>Email:</label><br>
+      <input type="email" id="email" required /><br>
+      <label>Password:</label><br>
+      <input type="password" id="password" required /><br>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div id="dashboardSection" class="container hidden">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()">Logout</button>
+    <h3>Add Holiday</h3>
+    <input type="date" id="holidayDate" />
+    <input type="text" id="holidayDesc" placeholder="Description" />
+    <button onclick="addHoliday()">Add Holiday</button>
+    <h3>Holidays List:</h3>
+    <div id="holidayList"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = window.location.origin;
+
+    function login(event) {
+      event.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      fetch(`${BACKEND_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          alert("Login successful!");
+          document.getElementById("loginSection").classList.add("hidden");
+          document.getElementById("dashboardSection").classList.remove("hidden");
+          loadHolidays();
+        } else {
+          alert(data.message || "Invalid email or password.");
+        }
+      })
+      .catch(error => console.error("Login Error:", error));
+    }
+
+    function loadHolidays() {
+      fetch(`${BACKEND_URL}/get_holidays`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("DEBUG: Received holidays data:", data);
+        const holidayList = document.getElementById("holidayList");
+        holidayList.innerHTML = "";
+        if (Object.keys(data).length === 0) {
+          holidayList.innerHTML = "<p>No holidays found.</p>";
+        } else {
+          for (const date in data) {
+            holidayList.innerHTML += `<p>${date}: ${data[date].description} 
+              <button class="remove-button" onclick="removeHoliday('${date}')">Remove</button></p>`;
+          }
+        }
+      })
+      .catch(error => console.error("Error fetching holidays:", error));
+    }
+
+    function addHoliday() {
+      const date = document.getElementById("holidayDate").value;
+      const desc = document.getElementById("holidayDesc").value.trim();
+
+      if (!date || !desc) {
+        alert("Please enter both a date and description.");
+        return;
+      }
+
+      fetch(`${BACKEND_URL}/add_holiday`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, description: desc })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        loadHolidays();
+      })
+      .catch(error => console.error("Error adding holiday:", error));
+    }
+
+    function removeHoliday(date) {
+      fetch(`${BACKEND_URL}/remove_holiday`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        loadHolidays();
+      })
+      .catch(error => console.error("Error removing holiday:", error));
+    }
+
+    function logout() {
+      alert("Logged out!");
+      document.getElementById("dashboardSection").classList.add("hidden");
+      document.getElementById("loginSection").classList.remove("hidden");
+    }
+  </script>
+</body>
+</html>
